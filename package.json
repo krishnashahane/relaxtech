@@ -1,0 +1,14 @@
+{
+  "name": "relaxtech",
+  "version": "0.1.0",
+  "description": "CLI controller for Eight Sleep Pod",
+  "author": "krishna",
+  "license": "MIT",
+  "scripts": {
+    "relaxtech": "go run ./cmd/relaxtech",
+    "build": "go build -o relaxtech ./cmd/relaxtech",
+    "lint": "golangci-lint run ./...",
+    "test": "go test ./...",
+    "format": "gofumpt -w ./"
+  }
+}
