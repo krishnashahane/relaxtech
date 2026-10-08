@@ -43,6 +43,9 @@ type Client struct {
 func New(email, password, userID, clientID, clientSecret string) *Client {
 	clientID = strings.TrimSpace(clientID)
 	clientSecret = strings.TrimSpace(clientSecret)
+	if clientID == "" {
+		clientID = "sleep-client"
+	}
 	transport := &http.Transport{
 		Proxy:           http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
@@ -116,7 +119,7 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		"grant_type":    "password",
 		"username":      c.Email,
 		"password":      c.Password,
-		"client_id":     "sleep-client",
+		"client_id":     c.ClientID,
 		"client_secret": c.ClientSecret,
 	}
 	body, _ := json.Marshal(payload)
