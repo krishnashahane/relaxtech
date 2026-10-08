@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -17,13 +18,10 @@ import (
 )
 
 const (
-	// Primary API endpoint for the Eight Sleep platform
+	// Primary API endpoint for the Eight Sleep platform.
 	defaultBaseURL = "https://client-api.8slp.net/v1"
-	// OAuth authentication endpoint
+	// OAuth authentication endpoint.
 	authURL = "https://auth-api.8slp.net/v1/tokens"
-	// Public application credentials obtained from Eight Sleep Android app v7.39.17
-	defaultClientID     = "0894c7f33bb94800a03f1f4df13a4f38"
-	defaultClientSecret = "f0954a3ed5763ba3d06834c73731a32f15f168f47d4f164751275def86db0c76"
 )
 
 // Client holds configuration and state for communicating with the Eight Sleep API.
@@ -43,12 +41,8 @@ type Client struct {
 
 // New constructs a Client with the given credentials, applying defaults where needed.
 func New(email, password, userID, clientID, clientSecret string) *Client {
-	if clientID == "" {
-		clientID = defaultClientID
-	}
-	if clientSecret == "" {
-		clientSecret = defaultClientSecret
-	}
+	clientID = strings.TrimSpace(clientID)
+	clientSecret = strings.TrimSpace(clientSecret)
 	transport := &http.Transport{
 		Proxy:           http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
@@ -123,7 +117,7 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		"username":      c.Email,
 		"password":      c.Password,
 		"client_id":     "sleep-client",
-		"client_secret": "",
+		"client_secret": c.ClientSecret,
 	}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewReader(body))
@@ -138,8 +132,6 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
-		log.Debug("token auth unsuccessful", "status", resp.Status, "headers", resp.Header, "body", string(b))
 		return fmt.Errorf("token auth failed: %s", resp.Status)
 	}
 
@@ -191,9 +183,7 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
-		log.Debug("legacy login unsuccessful", "status", resp.Status, "headers", resp.Header, "body", string(b))
-		return fmt.Errorf("login failed: %s", string(b))
+		return fmt.Errorf("login failed: %s", resp.Status)
 	}
 	var res struct {
 		Session struct {
@@ -291,21 +281,19 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
-		time.Sleep(2 * time.Second)
-		return c.do(ctx, method, path, query, body, out)
+		return fmt.Errorf("api rate limit exceeded")
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.token = ""
+		c.tokenExp = time.Time{}
 		_ = tokencache.Remove(c.AuthContext())
-		if err := c.ensureToken(ctx); err != nil {
+		if err := c.Authenticate(ctx); err != nil {
 			return err
 		}
 		return c.do(ctx, method, path, query, body, out)
 	}
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("api %s %s: %s", method, path, string(b))
-	}
+		return fmt.Errorf("api %s %s: %s", method, path, resp.Status)
 	if out != nil {
 		return json.NewDecoder(resp.Body).Decode(out)
 	}
