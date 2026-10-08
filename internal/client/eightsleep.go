@@ -291,19 +291,20 @@ func (c *Client) doWithRetry(ctx context.Context, method, path string, query url
 		return fmt.Errorf("api rate limit exceeded")
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
+		if retried {
+			return errors.New("authentication failed after token refresh")
+		}
 		c.token = ""
 		c.tokenExp = time.Time{}
 		_ = tokencache.Remove(c.AuthContext())
 		if err := c.Authenticate(ctx); err != nil {
 			return err
 		}
-		if retried {
-			return errors.New("authentication failed after token refresh")
-		}
 		return c.doWithRetry(ctx, method, path, query, body, out, true)
 	}
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("api %s %s: %s", method, path, resp.Status)
+	}
 	if out != nil {
 		return json.NewDecoder(resp.Body).Decode(out)
 	}
