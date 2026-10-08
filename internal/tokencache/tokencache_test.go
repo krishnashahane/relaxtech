@@ -1,6 +1,7 @@
 package tokencache
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -193,11 +194,17 @@ func TestRetrieveWithoutEmailFailsOnAmbiguity(t *testing.T) {
 }
 
 func TestFallbackPasswordFunc(t *testing.T) {
+	t.Setenv("RELAXTECH_KEYRING_PASSWORD", "strong-test-password")
 	pw, err := fallbackPassword("ignored")
 	if err != nil {
 		t.Fatalf("fallbackPassword returned error: %v", err)
 	}
-	if pw != appName+"-fallback" {
-		t.Fatalf("password = %q, want %q", pw, appName+"-fallback")
+	if pw != "strong-test-password" {
+		t.Fatalf("password = %q, want configured password", pw)
+	}
+
+	t.Setenv("RELAXTECH_KEYRING_PASSWORD", "")
+	if _, err := fallbackPassword("ignored"); err == nil {
+		t.Fatal("expected error when RELAXTECH_KEYRING_PASSWORD is unset")
 	}
 }
