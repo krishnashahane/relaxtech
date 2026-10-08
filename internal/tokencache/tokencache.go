@@ -2,6 +2,7 @@ package tokencache
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,7 +61,11 @@ func productionRingOpener() (keyring.Keyring, error) {
 }
 
 func fallbackPassword(_ string) (string, error) {
-	return appName + "-fallback", nil
+	password := strings.TrimSpace(os.Getenv("RELAXTECH_KEYRING_PASSWORD"))
+	if password == "" {
+		return "", errors.New("file keyring requires RELAXTECH_KEYRING_PASSWORD")
+	}
+	return password, nil
 }
 
 // Persist stores a token in the system keyring, associated with the
