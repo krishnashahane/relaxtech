@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Install Linux keyring build dependency
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev
+      - name: Verify formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Run tests
+        run: go test ./...
+      - name: Run vet
+        run: go vet ./...
+      - name: Verify build
+        run: go build ./...
