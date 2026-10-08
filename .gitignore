@@ -1,0 +1,16 @@
+# Build output
+/relaxtech
+
+# Go test/coverage artifacts
+*.test
+*.out
+coverage/
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Local credentials/configuration
+config.yaml
+*.local.yaml
