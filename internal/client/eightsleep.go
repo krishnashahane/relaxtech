@@ -288,7 +288,17 @@ func (c *Client) doWithRetry(ctx context.Context, method, path string, query url
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
-		return fmt.Errorf("api rate limit exceeded")
+		if retried {
+			return fmt.Errorf("api rate limit exceeded after retry")
+		}
+		timer := time.NewTimer(2 * time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+		return c.doWithRetry(ctx, method, path, query, body, out, true)
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		if retried {
