@@ -252,6 +252,10 @@ func (c *Client) requireUser(ctx context.Context) error {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	return c.doWithRetry(ctx, method, path, query, body, out, false)
+}
+
+func (c *Client) doWithRetry(ctx context.Context, method, path string, query url.Values, body any, out any, retried bool) error {
 	if err := c.ensureToken(ctx); err != nil {
 		return err
 	}
@@ -293,7 +297,10 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		if err := c.Authenticate(ctx); err != nil {
 			return err
 		}
-		return c.do(ctx, method, path, query, body, out)
+		if retried {
+			return errors.New("authentication failed after token refresh")
+		}
+		return c.doWithRetry(ctx, method, path, query, body, out, true)
 	}
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("api %s %s: %s", method, path, resp.Status)
