@@ -1,6 +1,6 @@
 module github.com/krishna/relaxtech
 
-go 1.24
+go 1.23
 
 require (
 	github.com/99designs/keyring v1.2.2
