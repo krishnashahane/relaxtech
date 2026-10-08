@@ -8,7 +8,7 @@ It provides commands for temperature control, device status, sleep data, alarms,
 
 ## Requirements
 
-- Go 1.24+
+- Go 1.23+
 - An Eight Sleep account
 - A supported Eight Sleep device
 - Network access to the Eight Sleep API
