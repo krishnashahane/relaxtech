@@ -4,10 +4,12 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -145,7 +147,17 @@ func (s *Scheduler) storePID() error {
 	if raw, err := os.ReadFile(s.PIDFilePath); err == nil {
 		existing := strings.TrimSpace(string(raw))
 		if existing != "" {
-			return fmt.Errorf("relaxtech daemon already running (pid %s)", existing)
+			pid, parseErr := strconv.Atoi(existing)
+			if parseErr != nil || pid <= 0 {
+				return fmt.Errorf("invalid daemon PID file %s", s.PIDFilePath)
+			}
+			process, findErr := os.FindProcess(pid)
+			if findErr == nil && process.Signal(syscall.Signal(0)) == nil {
+				return fmt.Errorf("relaxtech daemon already running (pid %s)", existing)
+			}
+			if removeErr := os.Remove(s.PIDFilePath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+				return fmt.Errorf("removing stale PID file %s: %w", s.PIDFilePath, removeErr)
+			}
 		}
 	}
 
